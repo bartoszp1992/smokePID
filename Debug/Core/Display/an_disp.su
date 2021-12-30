@@ -1,0 +1,11 @@
+an_disp.c:10:6:lcdSendHalf	16	static
+an_disp.c:19:6:lcdWriteByte	16	static
+an_disp.c:25:6:lcdWriteCmd	16	static
+an_disp.c:30:6:lcdChar	16	static
+an_disp.c:35:6:lcdInit	8	static
+an_disp.c:60:6:lcdClear	8	static
+an_disp.c:64:6:lcdLocate	16	static
+an_disp.c:84:6:lcdStr	16	static
+an_disp.c:89:6:lcdInt	48	static
+an_disp.c:99:6:floatToInts	48	static
+an_disp.c:108:6:lcdFloat	40	static
