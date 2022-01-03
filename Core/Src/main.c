@@ -23,6 +23,7 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "../Display/an_disp.h"
+#include <math.h>
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -44,6 +45,7 @@ ADC_HandleTypeDef hadc;
 DMA_HandleTypeDef hdma_adc;
 
 TIM_HandleTypeDef htim2;
+TIM_HandleTypeDef htim21;
 
 /* USER CODE BEGIN PV */
 
@@ -55,6 +57,7 @@ static void MX_GPIO_Init(void);
 static void MX_DMA_Init(void);
 static void MX_ADC_Init(void);
 static void MX_TIM2_Init(void);
+static void MX_TIM21_Init(void);
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
@@ -66,8 +69,8 @@ float conversionToMultiplier(uint16_t conversion, uint16_t maxMultiplier);
 float conversionToTemperature(uint16_t conversion);
 uint16_t conversionToServo(uint16_t reading);
 int32_t PID(float targetValue, float currentValue, float *integralSum,
-		float *lastError, float Pmultiplier, float Imultiplier,
-		float Dmultiplier);
+		float *lastError, uint32_t *Dcounter, float *xD, float Pmultiplier,
+		float Imultiplier, float Dmultiplier);
 
 uint32_t adcReadings[5];
 
@@ -81,8 +84,10 @@ float amplificationD;
 
 float integralSum;
 float lastError;
-uint32_t throttle;
+uint32_t Dcounter;
+float xD;
 
+uint32_t throttle;
 
 /* USER CODE END 0 */
 
@@ -116,7 +121,32 @@ int main(void) {
 	MX_DMA_Init();
 	MX_ADC_Init();
 	MX_TIM2_Init();
+	MX_TIM21_Init();
 	/* USER CODE BEGIN 2 */
+
+	//inicjalizacja wyświetlacza
+	lcdInit();
+	lcdLocate(4, 0);
+	lcdStr("smokePID");
+	lcdLocate(12, 1);
+	lcdStr("v1.1");
+	HAL_Delay(1000);
+
+	//uruchomienie PWM
+	HAL_TIM_PWM_Start(&htim2, TIM_CHANNEL_1);
+
+	//test serwa
+	__HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_1, 2000);
+	lcdLocate(0, 1);
+	lcdStr("MAX");
+	HAL_Delay(1000);
+
+	__HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_1, 1000);
+	lcdLocate(0, 1);
+	lcdStr("MIN");
+	HAL_Delay(1000);
+
+	lcdClear();
 
 	//kalibracja ADC
 	HAL_ADCEx_Calibration_Start(&hadc, ADC_SINGLE_ENDED);
@@ -124,20 +154,8 @@ int main(void) {
 	//uruchomienie przetwornika
 	HAL_ADC_Start_DMA(&hadc, adcReadings, 5);
 
-	//uruchomienie PWM
-	HAL_TIM_PWM_Start(&htim2, TIM_CHANNEL_1);
-
-	//ustawienie serwa na 0
-	__HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_1, 100);
-
-	//inicjalizacja wyświetlacza
-	lcdInit();
-	lcdLocate(4, 0);
-	lcdStr("smokePID");
-	lcdLocate(12, 1);
-	lcdStr("v1.0");
-	HAL_Delay(500);
-	lcdClear();
+	//uruchomienie niezależnego timera
+	HAL_TIM_Base_Start_IT(&htim21);
 
 	/* USER CODE END 2 */
 
@@ -145,41 +163,13 @@ int main(void) {
 	/* USER CODE BEGIN WHILE */
 	while (1) {
 
-		/*kanały ADC
-		 * 0- ustawiona temperatura
-		 * 1- wzmocnienie P
-		 * 2- wzmocnienie I
-		 * 3- wzmocnienie D
-		 * 4- odczytana temperatura
-		 */
-
-		//test serwa i wejść adc
-//		__HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_1,
-//				conversionToServo(adcReadings[0]));
-
-		//odczyt temperatury
-
-//		if(conversionToTemperature(adcReadings[4])>temperature) temperature = temperature + 0.1;
-//		else if(conversionToTemperature(adcReadings[4])<temperature) temperature = temperature - 0.1;
-		temperature = conversionToTemperature(adcReadings[4]);
-
-		//odczyt zadanej temperatury
-		setPoint = adcReadings[0] / 28;
-
-		//odczyt wzmocnień
-		amplificationP = conversionToMultiplier(adcReadings[1], 5);
-		amplificationI = conversionToMultiplier(adcReadings[2], 2);
-		amplificationD = conversionToMultiplier(adcReadings[3], 8);
-
-		throttle = PID(setPoint, temperature, &integralSum, &lastError, amplificationP, amplificationI, amplificationD)+100;
-
-		__HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_1, throttle);
-
-		//pokaż integralSum
-//		lcdLocate(0, 1);
-//		lcdFloat(integralSum);
-
-
+		//pokaż położenie przepustnicy
+		lcdLocate(8, 0);
+		if (throttle < 2000)
+			lcdInt((throttle - 1000) / 10);
+		else
+			lcdInt(99);
+		lcdStr(" ");
 
 		//pokaż zadaną temperaturę
 		lcdLocate(0, 0);
@@ -193,7 +183,7 @@ int main(void) {
 
 		//pokaż wzmocnienia regulatorów
 		lcdLocate(0, 1);
-		lcdFloat(amplificationP, 100);
+		lcdFloat(amplificationP, 10);
 		lcdStr(" ");
 
 		lcdLocate(6, 1);
@@ -201,14 +191,130 @@ int main(void) {
 		lcdStr(" ");
 
 		lcdLocate(12, 1);
-		lcdFloat(amplificationD, 100);
+		lcdFloat(amplificationD, 10);
 		lcdStr(" ");
-
 
 		/* USER CODE END WHILE */
 
 		/* USER CODE BEGIN 3 */
 	}
+
+}
+
+void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
+
+	if (htim->Instance == TIM21) {
+
+		/*kanały ADC
+		 * 0- ustawiona temperatura
+		 * 1- wzmocnienie P
+		 * 2- wzmocnienie I
+		 * 3- wzmocnienie D
+		 * 4- odczytana temperatura
+		 */
+
+		//test serwa i wejść adc
+		//		__HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_1,
+		//		conversionToServo(adcReadings[0]));
+		//odczyt temperatury
+		//różniczkowany
+		//		if(conversionToTemperature(adcReadings[4])>temperature) temperature = temperature + 0.1;
+		//		else if(conversionToTemperature(adcReadings[4])<temperature) temperature = temperature - 0.1;
+		//bezpośredni
+		temperature = conversionToTemperature(adcReadings[4]);
+
+		//stała wartość
+		//		temperature = 30.54;
+
+		//odczyt zadanej temperatury
+		setPoint = adcReadings[0] / 28;
+
+		//odczyt wzmocnień
+		amplificationP = conversionToMultiplier(adcReadings[1], 50);
+		amplificationI = conversionToMultiplier(adcReadings[2], 10);
+		amplificationD = conversionToMultiplier(adcReadings[3], 90);
+
+		throttle = PID(setPoint, temperature, &integralSum, &lastError,
+				&Dcounter, &xD, amplificationP, amplificationI, amplificationD)
+				+ 1000;
+
+		__HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_1, throttle);
+
+	}
+
+}
+
+float conversionToMultiplier(uint16_t conversion, uint16_t maxMultiplier) {
+	/*przelicz odczyt z potencjometru na mnożnik. Poniżej połowy- mnoznik ułamkowy.
+	 Powyżej połowy- mnożnik całkowity o maksymalnej wartości maxMultiplier*/
+
+	float reg;
+
+	if (conversion < 2048) {
+		reg = ((float) conversion * 1) / 2047;
+
+	} else if (conversion >= 2048) {
+		float conversion2 = (float) conversion - 2048;
+		reg = (maxMultiplier * conversion2 / 2047)+1;
+	}
+	return reg;
+}
+
+float conversionToTemperature(uint16_t conversion) {
+	/*przelicz odczyt z termometru na temperaturę wg klucza 10mV/stC*/
+
+	float temperature = (conversion * 3.3 / 4095) * 100;
+	return temperature;
+}
+
+uint16_t conversionToServo(uint16_t reading) {
+	return ((reading * 100) / 4095) + 100;
+}
+
+int32_t PID(float targetValue, float currentValue, float *integralSum,
+		float *lastError, uint32_t *Dcounter, float *xD, float Pmultiplier,
+		float Imultiplier, float Dmultiplier) {
+
+	//obliczenie uchybu
+	float currentError = targetValue - currentValue;
+
+	//człon proporcjonalny
+	float xP = currentError * Pmultiplier;
+
+	//człon całkujący
+	*integralSum = *integralSum + (currentError / 100);
+	float xI = *integralSum * Imultiplier;
+
+	//anty Wind-Up(blokada pętli całkowania)
+	float antiWindUp = 1000;//max windUp
+	if (*integralSum >= antiWindUp && currentError > 0)
+		*integralSum = antiWindUp;
+	else if (*integralSum <= 0 - antiWindUp && currentError < 0)
+		*integralSum = 0 - antiWindUp;
+	//^ blokada ma zapobiec nieskończonemu wzrastaniu integralSum.
+
+	//człon różniczkujący
+	uint32_t Ddivider = 200;		//dzielnik opóźniający
+	(*Dcounter)++;		//licznik wywołań funkcji PID
+	if (*Dcounter >= Ddivider) {
+		*xD = (currentError - *lastError) * Dmultiplier * 10; //-1
+		*lastError = currentError;
+		*Dcounter = 0;
+	}
+	//^Człon różniczkujący jest opóźniony, wykonuje się raz na divider wywołań funkcji.
+	//potrzebuje do tego licznika(Dcounter), a xD jest zachowywane do następnego wywołania.
+
+	//sumowanie korekt
+	float sum = xP + xI + *xD;
+	int32_t throttle = (int32_t) round(sum);
+
+	int32_t maxThrottle = 1000;
+	if (throttle > maxThrottle)
+		throttle = maxThrottle;
+	else if (throttle < 0)
+		throttle = 0;
+
+	return throttle;
 	/* USER CODE END 3 */
 }
 
@@ -272,7 +378,7 @@ static void MX_ADC_Init(void) {
 	hadc.Init.OversamplingMode = DISABLE;
 	hadc.Init.ClockPrescaler = ADC_CLOCK_SYNC_PCLK_DIV2;
 	hadc.Init.Resolution = ADC_RESOLUTION_12B;
-	hadc.Init.SamplingTime = ADC_SAMPLETIME_79CYCLES_5;
+	hadc.Init.SamplingTime = ADC_SAMPLETIME_160CYCLES_5;
 	hadc.Init.ScanConvMode = ADC_SCAN_DIRECTION_FORWARD;
 	hadc.Init.DataAlign = ADC_DATAALIGN_RIGHT;
 	hadc.Init.ContinuousConvMode = ENABLE;
@@ -344,9 +450,9 @@ static void MX_TIM2_Init(void) {
 
 	/* USER CODE END TIM2_Init 1 */
 	htim2.Instance = TIM2;
-	htim2.Init.Prescaler = 239;
+	htim2.Init.Prescaler = 23;
 	htim2.Init.CounterMode = TIM_COUNTERMODE_UP;
-	htim2.Init.Period = 1999;
+	htim2.Init.Period = 19999;
 	htim2.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
 	htim2.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
 	if (HAL_TIM_Base_Init(&htim2) != HAL_OK) {
@@ -377,6 +483,48 @@ static void MX_TIM2_Init(void) {
 
 	/* USER CODE END TIM2_Init 2 */
 	HAL_TIM_MspPostInit(&htim2);
+
+}
+
+/**
+ * @brief TIM21 Initialization Function
+ * @param None
+ * @retval None
+ */
+static void MX_TIM21_Init(void) {
+
+	/* USER CODE BEGIN TIM21_Init 0 */
+
+	/* USER CODE END TIM21_Init 0 */
+
+	TIM_ClockConfigTypeDef sClockSourceConfig = { 0 };
+	TIM_MasterConfigTypeDef sMasterConfig = { 0 };
+
+	/* USER CODE BEGIN TIM21_Init 1 */
+
+	/* USER CODE END TIM21_Init 1 */
+	htim21.Instance = TIM21;
+	htim21.Init.Prescaler = 149;
+	htim21.Init.CounterMode = TIM_COUNTERMODE_UP;
+	htim21.Init.Period = 399;
+	htim21.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+	htim21.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+	if (HAL_TIM_Base_Init(&htim21) != HAL_OK) {
+		Error_Handler();
+	}
+	sClockSourceConfig.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
+	if (HAL_TIM_ConfigClockSource(&htim21, &sClockSourceConfig) != HAL_OK) {
+		Error_Handler();
+	}
+	sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
+	sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
+	if (HAL_TIMEx_MasterConfigSynchronization(&htim21, &sMasterConfig)
+			!= HAL_OK) {
+		Error_Handler();
+	}
+	/* USER CODE BEGIN TIM21_Init 2 */
+
+	/* USER CODE END TIM21_Init 2 */
 
 }
 
@@ -443,71 +591,6 @@ static void MX_GPIO_Init(void) {
 }
 
 /* USER CODE BEGIN 4 */
-
-float conversionToMultiplier(uint16_t conversion, uint16_t maxMultiplier) {
-	/*przelicz odczyt z potencjometru na mnożnik. Poniżej połowy- mnoznik ułamkowy.
-	 Powyżej połowy- mnożnik całkowity o maksymalnej wartości maxMultiplier*/
-
-	float reg;
-
-	if (conversion < 2048) {
-		reg = ((float) conversion * 1) / 2047;
-
-	} else if (conversion >= 2048) {
-		float conversion2 = (float) conversion - 2048;
-		reg = (maxMultiplier * conversion2 / 2047);
-	}
-	return reg;
-}
-
-float conversionToTemperature(uint16_t conversion) {
-	/*przelicz odczyt z termometru na temperaturę wg klucza 10mV/stC*/
-
-	float temperature = (conversion * 3.3 / 4095) * 100;
-	return temperature;
-}
-
-uint16_t conversionToServo(uint16_t reading) {
-	return ((reading * 100) / 4095) + 100;
-}
-
-int32_t PID(float targetValue, float currentValue, float *integralSum,
-		float *lastError, float Pmultiplier, float Imultiplier,
-		float Dmultiplier) {
-
-	//obliczenie uchybu
-	float currentError = targetValue - currentValue;
-
-	//człon proporcjonalny
-	float xP = currentError * Pmultiplier; //3
-
-	//człon całkujący
-	*integralSum = *integralSum + currentError; //4
-	float xI = *integralSum * Imultiplier; //4
-
-	//anty Wind-Up(blokada pętli całkowania)
-	if(*integralSum>=100 && currentError > 0) *integralSum = 100;
-	else if(*integralSum<=-100 && currentError<0) *integralSum = -100;
-
-	//człon różniczkujący
-	float xD = (currentError - *lastError) * Dmultiplier; //-1
-	*lastError = currentError;
-
-	//sumowanie korekt
-	int32_t throttle = xP + xI + xD;
-
-	int32_t maxThrottle = 100;
-	if (throttle > maxThrottle)
-		throttle = maxThrottle;
-	else if (throttle < 0)
-		throttle = 0;
-
-
-
-
-	return throttle;
-
-}
 
 /* USER CODE END 4 */
 
