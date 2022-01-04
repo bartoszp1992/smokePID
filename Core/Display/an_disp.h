@@ -2,10 +2,12 @@
 #define an_disp_H
 
 #include <stdlib.h>
+#include <stdio.h>
+#include <math.h>
 //PIN SET
 
 #include "main.h"
-#include <stdio.h>
+
 
 #define LCD_RS_PIN DISP_RS_Pin
 #define LCD_RS_PORT DISP_RS_GPIO_Port
@@ -85,6 +87,6 @@ void lcdClear(void);
 
 void lcdFloat(float data, uint32_t denominator);
 
-void floatToInts(float data, uint32_t denominator, int32_t *ones, uint32_t *decimals);
+void floatToInts(float data, uint32_t denominator, int32_t *ones, uint32_t *decimals, uint8_t *zeros);
 
 #endif

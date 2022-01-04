@@ -136,14 +136,19 @@ int main(void) {
 	HAL_TIM_PWM_Start(&htim2, TIM_CHANNEL_1);
 
 	//test serwa
-	__HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_1, 2000);
-	lcdLocate(0, 1);
-	lcdStr("MAX");
-	HAL_Delay(1000);
-
-	__HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_1, 1000);
 	lcdLocate(0, 1);
 	lcdStr("MIN");
+	__HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_1, 1000);
+	HAL_Delay(1000);
+
+	lcdLocate(0, 1);
+	lcdStr("MAX");
+	__HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_1, 2000);
+	HAL_Delay(1000);
+
+	lcdLocate(0, 1);
+	lcdStr("MIN");
+	__HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_1, 1000);
 	HAL_Delay(1000);
 
 	lcdClear();
@@ -164,17 +169,25 @@ int main(void) {
 	while (1) {
 
 		//pokaż położenie przepustnicy
-		lcdLocate(8, 0);
-		if (throttle < 2000)
-			lcdInt((throttle - 1000) / 10);
-		else
-			lcdInt(99);
-		lcdStr(" ");
+//		lcdLocate(8, 0);
+//		if (throttle < 2000)
+//			lcdInt((throttle - 1000) / 10);
+//		else
+//			lcdInt(99);
+//		lcdStr(" ");
+
+		//pokaż regulator
+//		lcdLocate(6, 0);
+//		lcdInt(xD);
+//		lcdStr("  ");
+
+		lcdLocate(6, 0);
+		lcdStr(" PID");
 
 		//pokaż zadaną temperaturę
 		lcdLocate(0, 0);
 		lcdInt(setPoint);
-		lcdStr("stC  ");
+		lcdStr("stC ");
 
 		//pokaż rzeczywistą temperaturę
 		lcdLocate(11, 0);
@@ -214,12 +227,15 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
 		 */
 
 		//test serwa i wejść adc
-		//		__HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_1,
-		//		conversionToServo(adcReadings[0]));
+		//__HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_1,
+		//conversionToServo(adcReadings[0]));
+
 		//odczyt temperatury
 		//różniczkowany
-		//		if(conversionToTemperature(adcReadings[4])>temperature) temperature = temperature + 0.1;
-		//		else if(conversionToTemperature(adcReadings[4])<temperature) temperature = temperature - 0.1;
+//		if (conversionToTemperature(adcReadings[4]) > temperature)
+//			temperature = temperature + 0.01;
+//		else if (conversionToTemperature(adcReadings[4]) < temperature)
+//			temperature = temperature - 0.01;
 		//bezpośredni
 		temperature = conversionToTemperature(adcReadings[4]);
 
@@ -230,9 +246,9 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
 		setPoint = adcReadings[0] / 28;
 
 		//odczyt wzmocnień
-		amplificationP = conversionToMultiplier(adcReadings[1], 50);
+		amplificationP = conversionToMultiplier(adcReadings[1], 40);
 		amplificationI = conversionToMultiplier(adcReadings[2], 10);
-		amplificationD = conversionToMultiplier(adcReadings[3], 90);
+		amplificationD = conversionToMultiplier(adcReadings[3], 3);
 
 		throttle = PID(setPoint, temperature, &integralSum, &lastError,
 				&Dcounter, &xD, amplificationP, amplificationI, amplificationD)
@@ -255,7 +271,7 @@ float conversionToMultiplier(uint16_t conversion, uint16_t maxMultiplier) {
 
 	} else if (conversion >= 2048) {
 		float conversion2 = (float) conversion - 2048;
-		reg = (maxMultiplier * conversion2 / 2047)+1;
+		reg = ((maxMultiplier-1) * conversion2 / 2047) + 1;
 	}
 	return reg;
 }
@@ -286,7 +302,7 @@ int32_t PID(float targetValue, float currentValue, float *integralSum,
 	float xI = *integralSum * Imultiplier;
 
 	//anty Wind-Up(blokada pętli całkowania)
-	float antiWindUp = 1000;//max windUp
+	float antiWindUp = 1000;		//max windUp
 	if (*integralSum >= antiWindUp && currentError > 0)
 		*integralSum = antiWindUp;
 	else if (*integralSum <= 0 - antiWindUp && currentError < 0)
@@ -294,10 +310,10 @@ int32_t PID(float targetValue, float currentValue, float *integralSum,
 	//^ blokada ma zapobiec nieskończonemu wzrastaniu integralSum.
 
 	//człon różniczkujący
-	uint32_t Ddivider = 200;		//dzielnik opóźniający
+	uint32_t Ddivider = 100;		//dzielnik opóźniający
 	(*Dcounter)++;		//licznik wywołań funkcji PID
 	if (*Dcounter >= Ddivider) {
-		*xD = (currentError - *lastError) * Dmultiplier * 10; //-1
+		*xD = (currentError - *lastError) * Dmultiplier * 20; //-1
 		*lastError = currentError;
 		*Dcounter = 0;
 	}
@@ -504,9 +520,9 @@ static void MX_TIM21_Init(void) {
 
 	/* USER CODE END TIM21_Init 1 */
 	htim21.Instance = TIM21;
-	htim21.Init.Prescaler = 149;
+	htim21.Init.Prescaler = 74;
 	htim21.Init.CounterMode = TIM_COUNTERMODE_UP;
-	htim21.Init.Period = 399;
+	htim21.Init.Period = 199;
 	htim21.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
 	htim21.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
 	if (HAL_TIM_Base_Init(&htim21) != HAL_OK) {
@@ -561,7 +577,8 @@ static void MX_GPIO_Init(void) {
 
 	/*Configure GPIO pin Output Level */
 	HAL_GPIO_WritePin(GPIOA,
-	LED_STATUS_Pin | DISP_D7_Pin | DISP_D5_Pin | DISP_D4_Pin, GPIO_PIN_RESET);
+			LED_STATUS_Pin | DISP_D7_Pin | DISP_D5_Pin | DISP_D4_Pin,
+			GPIO_PIN_RESET);
 
 	/*Configure GPIO pin Output Level */
 	HAL_GPIO_WritePin(DISP_D6_GPIO_Port, DISP_D6_Pin, GPIO_PIN_RESET);

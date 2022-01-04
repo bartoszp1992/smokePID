@@ -89,19 +89,22 @@ void lcdStr(char *text) {
 void lcdInt(int data){
 
 	char buffer[20];
-
 	sprintf(buffer, "%d", data);
-
 	lcdStr(buffer);
 
 }
 
-void floatToInts(float data, uint32_t denominator, int32_t *ones, uint32_t *decimals){
-	int32_t integer = (uint32_t)data;
-	float afterComma = (data-(float)integer)*denominator;
-	int32_t afterComma2 = (int32_t)afterComma;
+void floatToInts(float data, uint32_t denominator, int32_t *ones, uint32_t *decimals, uint8_t *zeros){
+	//ex 21.04
+	int32_t integer = (uint32_t)data;//21
+	int32_t all = data*(float)denominator;//21040
+	float afterComma = all - (integer*denominator);
+
 	*ones = integer;
-	*decimals = abs(afterComma2);
+	*decimals = abs((int32_t)afterComma);
+	*zeros = log10(denominator)-1;
+
+
 
 }
 
@@ -109,14 +112,22 @@ void lcdFloat(float data, uint32_t denominator){
 
 	int32_t beforeComma;
 	uint32_t afterComma;
+	uint8_t zeros;
 
-	floatToInts(data, denominator, &beforeComma, &afterComma);
+	floatToInts(data, denominator, &beforeComma, &afterComma, &zeros);
 
 	lcdInt(beforeComma);
 	lcdChar('.');
-	float e = 10^1;
 
-	if(afterComma < denominator / e) lcdInt(0);
+	if(denominator == 100 && afterComma < 10){
+		lcdStr("0");
+	}
+	if(denominator == 1000){
+		if(afterComma<10) lcdStr("00");
+		else if(afterComma<100) lcdStr("0");
+	}
+
+
 
 	lcdInt(afterComma);
 
