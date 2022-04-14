@@ -129,7 +129,7 @@ int main(void) {
 	lcdLocate(4, 0);
 	lcdStr("smokePID");
 	lcdLocate(12, 1);
-	lcdStr("v1.1");
+	lcdStr("v1.2");
 	HAL_Delay(1000);
 
 	//uruchomienie PWM
@@ -248,7 +248,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
 		//odczyt wzmocnień
 		amplificationP = conversionToMultiplier(adcReadings[1], 40);
 		amplificationI = conversionToMultiplier(adcReadings[2], 10);
-		amplificationD = conversionToMultiplier(adcReadings[3], 3);
+		amplificationD = conversionToMultiplier(adcReadings[3], 30);
 
 		throttle = PID(setPoint, temperature, &integralSum, &lastError,
 				&Dcounter, &xD, amplificationP, amplificationI, amplificationD)
@@ -310,7 +310,7 @@ int32_t PID(float targetValue, float currentValue, float *integralSum,
 	//^ blokada ma zapobiec nieskończonemu wzrastaniu integralSum.
 
 	//człon różniczkujący
-	uint32_t Ddivider = 100;		//dzielnik opóźniający
+	uint32_t Ddivider = 500;		//dzielnik opóźniający
 	(*Dcounter)++;		//licznik wywołań funkcji PID
 	if (*Dcounter >= Ddivider) {
 		*xD = (currentError - *lastError) * Dmultiplier * 20; //-1

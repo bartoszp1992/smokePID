@@ -15,6 +15,13 @@ S_DEPS += \
 
 
 # Each subdirectory must supply rules for building sources it contributes
-Core/Startup/startup_stm32l041f6px.o: ../Core/Startup/startup_stm32l041f6px.s Core/Startup/subdir.mk
-	arm-none-eabi-gcc -mcpu=cortex-m0plus -g3 -c -x assembler-with-cpp -MMD -MP -MF"Core/Startup/startup_stm32l041f6px.d" -MT"$@" --specs=nano.specs -mfloat-abi=soft -mthumb -o "$@" "$<"
+Core/Startup/%.o: ../Core/Startup/%.s Core/Startup/subdir.mk
+	arm-none-eabi-gcc -mcpu=cortex-m0plus -g3 -c -x assembler-with-cpp -MMD -MP -MF"$(@:%.o=%.d)" -MT"$@" --specs=nano.specs -mfloat-abi=soft -mthumb -o "$@" "$<"
+
+clean: clean-Core-2f-Startup
+
+clean-Core-2f-Startup:
+	-$(RM) ./Core/Startup/startup_stm32l041f6px.d ./Core/Startup/startup_stm32l041f6px.o
+
+.PHONY: clean-Core-2f-Startup
 
