@@ -1,0 +1,10 @@
+(unit MM)
+
+(package "WH1602L"
+    (type UNDEF)
+    (uver 2)
+    (mountForm default
+        (footprintRef "WH1602L")
+        (spec "default")
+    )
+)

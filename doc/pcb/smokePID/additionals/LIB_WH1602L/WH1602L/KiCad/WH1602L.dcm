@@ -1,0 +1,9 @@
+EESchema-DOCLIB  Version 2.0
+#
+$CMP WH1602L
+D (16 characters x 2 lines, transflective, positive FSTN, white background, black characters)
+K
+F https://datasheet.datasheetarchive.com/originals/distributors/Datasheets-314/304334.pdf
+$ENDCMP
+#
+#End Doc Library

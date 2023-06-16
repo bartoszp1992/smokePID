@@ -1,0 +1,13 @@
+(unit MM)
+
+(package "WH1602L"
+    (type UNDEF)
+    (uver 2)
+    (cuser "SamacSys")
+    (uuser "SamacSys")
+    (utime 2021-01-12-19:35:34)
+    (mountForm default
+        (footprintRef "WH1602L")
+        (spec "System")
+    )
+)

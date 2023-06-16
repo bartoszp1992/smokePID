@@ -1,0 +1,19 @@
+.WH1602L :1 ;(16 characters x 2 lines, transflective, positive FSTN, white background, black characters)
+WH1602L
+*STM DS
+*NGS
+*PNM 1=1 2=2 3=3 4=4 5=5 6=6 7=7 8=8 9=9 10=10 11=11 12=12 13=13 14=14 15=15 16=16 17=MH1 18=MH2 19=MH3 20=MH4
+*PLB 1="VSS" 2="VDD" 3="VO" 4="RS" 5="R/'W'" 6="E" 7="DB0" 8="DB1" 9="DB2" 10="DB3" 11="DB4" 12="DB5" 13="DB6" 14="DB7" 15="A/VEE" 16="K" 17="MH1" 18="MH2" 19="MH3" 20="MH4"
+*MXP 20
+*DFN WH1602L
+~!Manufacturer_Name (Winstar)
+~!Manufacturer_Part_Number (WH1602L)
+~!Mouser Part Number (-)
+~!Mouser Price/Stock (-)
+~!Arrow Part Number (-)
+~!Arrow Price/Stock (-)
+~!Link Datasheet (https://datasheet.datasheetarchive.com/originals/distributors/Datasheets-314/304334.pdf)
+~!Height (13.6mm)
+~!3D_Model (WH1602L)
+WH1602L
+1.1!U 2.1!U 3.1!U 4.1!U 5.1!U 6.1!U 7.1!U 8.1!U 9.1!U 10.1!U 11.1!U 12.1!U 13.1!U 14.1!U 15.1!U 16.1!U 17.1!U 18.1!U 19.1!U 20.1!U 

@@ -1,0 +1,9 @@
+Manufacturer=Winstar
+PartNumber=WH1602L
+PartCategory=Display
+PackageCategory=Other
+PinCount=20
+Version=1.7
+Released=2021-01-12 19:35:34
+Downloaded=2023-04-08 17:31:30
+3D=Y

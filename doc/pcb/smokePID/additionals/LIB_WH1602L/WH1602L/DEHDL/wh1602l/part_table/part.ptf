@@ -1,0 +1,11 @@
+FILE_TYPE = MULTI_PHYS_TABLE;
+
+PART 'WH1602L'
+CLASS = DISCRETE
+{========================================================================================}
+:"MANUFACTURER_NAME", "MANUFACTURER_PART_NUMBER"= "PART_NUMBER", "JEDEC_TYPE", "PACK_TYPE", "MOUSER_PART_NUMBER", "MOUSER_PRICE/STOCK", "ARROW_PART_NUMBER", "ARROW_PRICE/STOCK", "DESCRIPTION", "DATASHEET", "HEIGHT";
+{========================================================================================}
+ "Winstar", "WH1602L" (!) = "", "WH1602L", "Other", "", "", "", "", "(16 characters x 2 lines, transflective, positive FSTN, white background, black characters)", "https://datasheet.datasheetarchive.com/originals/distributors/Datasheets-314/304334.pdf", "13.6 mm"
+END_PART
+
+END.
