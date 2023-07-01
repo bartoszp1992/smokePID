@@ -89,6 +89,12 @@ float xD;
 
 uint32_t throttle;
 
+//resetowanie wyświetlacza co kilka sekund
+volatile uint32_t displayRefreshCounter = 0;
+volatile uint32_t displayRefreshDivider = 2000;
+volatile uint8_t displayRefreshFlag = 0;
+
+
 /* USER CODE END 0 */
 
 /**
@@ -182,6 +188,12 @@ int main(void)
 //		lcdInt(xD);
 //		lcdStr("  ");
 
+		if(displayRefreshFlag){
+			lcdInit();
+			lcdClear();
+			displayRefreshFlag = 0;
+		}
+
 		lcdLocate(6, 0);
 		lcdStr(" PID");
 
@@ -218,6 +230,12 @@ int main(void)
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
 
 	if (htim->Instance == TIM21) {
+		//odświeżanie(reinicjalizacja) wyswietlacza(kasuje krzaki)
+		displayRefreshCounter++;
+		if(displayRefreshCounter >= displayRefreshDivider){
+			displayRefreshFlag = 1;
+			displayRefreshCounter = 0;
+		}
 
 		/*kanały ADC
 		 * 0- ustawiona temperatura
